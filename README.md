@@ -119,21 +119,20 @@ Frontend runs at `http://localhost:5173`, backend at `http://localhost:3001`.
 
 ## Deployment
 
-### Frontend — Firebase Hosting (Free)
+### Frontend — Vercel
 
-```bash
-# Install Firebase CLI
-npm install -g firebase-tools
-
-# Login and init
-firebase login
-firebase init hosting
-# Select your project, set public dir to "dist", configure as SPA
-
-# Build and deploy
-npm run build
-firebase deploy --only hosting
-```
+1. Push your code to GitHub.
+2. Log in to [Vercel](https://vercel.com/) and click **Add New Project**.
+3. Import your GitHub repository. Vercel will automatically detect Vite.
+4. Add the following **Environment Variables** in the Vercel dashboard:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_API_URL` (Set this to your Cloud Run URL)
+5. Click **Deploy**.
 
 ### Backend — Google Cloud Run
 
