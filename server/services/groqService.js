@@ -54,8 +54,8 @@ Respond in this EXACT JSON format:
 
 // 2. Code Fix
 async function fixCodeAI(code, error, language) {
-  const fixedCode = await chatCompletionText(
-    `You are a code repair expert. Fix this code while keeping the user's logic intact. Return ONLY the corrected code. No explanations. No markdown fences. No backticks.`,
+  let fixedCode = await chatCompletionText(
+    `You are a code repair expert. Fix this code while keeping the user's logic intact. Return ONLY the corrected code. Do NOT wrap it in markdown. Do not say "Here is the code".`,
     `Fix this ${language} code:
 
 ${code}
@@ -63,6 +63,22 @@ ${code}
 Error (if any):
 ${error || 'No specific error, but optimize and fix any issues.'}`
   );
+
+  // Strip reasoning tags if model uses chain-of-thought (e.g. DeepSeek/Qwen)
+  if (fixedCode.includes('<think>')) {
+    fixedCode = fixedCode.replace(/<think>[\s\S]*?<\/think>\s*/g, '');
+  }
+
+  // Strip markdown code fences and conversational text if the model still adds them
+  if (fixedCode.includes('```')) {
+    const match = fixedCode.match(/```[a-z]*\n([\s\S]*?)```/);
+    if (match) {
+      fixedCode = match[1];
+    } else {
+      fixedCode = fixedCode.replace(/```[a-z]*\n?/g, '').replace(/```/g, '');
+    }
+  }
+
   return { fixedCode: fixedCode.trim() };
 }
 
