@@ -24,6 +24,27 @@ const WANDBOX_COMPILERS = {
   46: 'bash',                  // Bash
 };
 
+let activeRequests = 0;
+const MAX_CONCURRENT = 2; // Wandbox rate-limit protection
+const requestQueue = [];
+
+async function acquireLock() {
+  if (activeRequests < MAX_CONCURRENT) {
+    activeRequests++;
+    return;
+  }
+  return new Promise(resolve => requestQueue.push(resolve));
+}
+
+function releaseLock() {
+  if (requestQueue.length > 0) {
+    const next = requestQueue.shift();
+    next();
+  } else {
+    activeRequests--;
+  }
+}
+
 async function executeCode(sourceCode, languageId, stdin = '') {
   const compiler = WANDBOX_COMPILERS[languageId];
   if (!compiler) {
@@ -35,6 +56,7 @@ async function executeCode(sourceCode, languageId, stdin = '') {
     sourceCode = sourceCode.replace(/public\s+class\s/g, 'class ');
   }
 
+  await acquireLock();
   try {
     const { data } = await axios.post(WANDBOX_API, {
       code: sourceCode,
@@ -66,6 +88,8 @@ async function executeCode(sourceCode, languageId, stdin = '') {
     };
   } catch (err) {
     throw new Error(`Execution failed: ${err.message}`);
+  } finally {
+    releaseLock();
   }
 }
 
