@@ -59,7 +59,7 @@ export default function LandingPage() {
       {/* ===== NAVBAR ===== */}
       <nav className="landing-nav">
         <div className="landing-nav-left">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#22c55e"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#f97316"/></svg>
           <span className="landing-logo">Debugra</span>
         </div>
 
