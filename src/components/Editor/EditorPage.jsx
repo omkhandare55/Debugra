@@ -260,7 +260,7 @@ export default function EditorPage({ user }) {
   const langConfig = LANGUAGES[language];
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
       {/* ===== TOP BAR ===== */}
       <div className="topbar">
         <div className="topbar-left">

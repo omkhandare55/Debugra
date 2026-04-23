@@ -129,11 +129,11 @@ export default function ChatPanel({ roomId, user, isOpen, onToggle }) {
                 Live
               </span>
               <button onClick={onToggle} style={{
-                width: '24px', height: '24px', borderRadius: '6px',
+                width: '32px', height: '32px', borderRadius: '6px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'none', border: 'none', cursor: 'pointer', color: '#64748b',
+                background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#e2e8f0',
               }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>

@@ -588,8 +588,8 @@ body {
 
   /* Chat panel */
   .chat-panel {
-    right: 0 !important; bottom: 0 !important; left: 0 !important;
-    width: 100% !important; max-height: 100vh !important; height: 100vh !important;
+    top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important;
+    width: 100% !important; max-height: 100dvh !important; height: 100dvh !important;
     border-radius: 0 !important;
   }
   .chat-fab {
