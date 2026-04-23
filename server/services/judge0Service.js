@@ -30,6 +30,11 @@ async function executeCode(sourceCode, languageId, stdin = '') {
     throw new Error(`Unsupported language ID: ${languageId}`);
   }
 
+  // Wandbox defaults Java files to prog.java, which breaks if class is 'public'
+  if (languageId === 62 || languageId === '62') {
+    sourceCode = sourceCode.replace(/public\s+class\s/g, 'class ');
+  }
+
   try {
     const { data } = await axios.post(WANDBOX_API, {
       code: sourceCode,
