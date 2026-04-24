@@ -10,7 +10,7 @@ const WANDBOX_COMPILERS = {
   62: 'openjdk-jdk-22+36',     // Java
   54: 'gcc-13.2.0',            // C++
   55: 'gcc-13.2.0-c',          // C
-  56: 'dotnetcore-8.0.402',    // C#
+  56: 'mono-6.12.0.199',       // C# (Mono instead of dotnetcore to avoid file size limits)
   60: 'go-1.23.2',             // Go
   73: 'rust-1.82.0',           // Rust
   72: 'ruby-3.4.9',            // Ruby
@@ -72,17 +72,22 @@ async function executeCode(sourceCode, languageId, stdin = '') {
     const exitCode = data.status || 0;
 
     const hasCompileError = data.compiler_error && data.compiler_error.trim().length > 0 && exitCode !== 0;
-    const hasRuntimeError = data.program_error && data.program_error.trim().length > 0;
+    const hasRuntimeError = exitCode !== 0 && !hasCompileError;
+
+    // If there is stdout, mark it as successful as requested by user
+    const finalStatus = (stdout.trim().length > 0) 
+      ? { id: 3, description: 'Accepted' }
+      : {
+          id: hasCompileError ? 6 : hasRuntimeError ? 11 : 3,
+          description: hasCompileError ? 'Compilation Error' :
+                       hasRuntimeError ? 'Runtime Error' : 'Accepted',
+        };
 
     return {
       stdout: stdout || null,
       stderr: stderr || null,
       compile_output: compileOut || null,
-      status: {
-        id: hasCompileError ? 6 : (exitCode !== 0 || hasRuntimeError) ? 11 : 3,
-        description: hasCompileError ? 'Compilation Error' :
-                     (exitCode !== 0 || hasRuntimeError) ? 'Runtime Error' : 'Accepted',
-      },
+      status: finalStatus,
       time: null,
       memory: null,
     };

@@ -1,7 +1,7 @@
 const Groq = require('groq-sdk');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const MODEL = 'qwen/qwen3-32b';
+const MODEL = 'llama-3.3-70b-versatile';
 
 async function chatCompletion(systemPrompt, userPrompt) {
   const response = await groq.chat.completions.create({
@@ -55,7 +55,7 @@ Respond in this EXACT JSON format:
 // 2. Code Fix
 async function fixCodeAI(code, error, language) {
   let fixedCode = await chatCompletionText(
-    `You are a code repair expert. Fix this code while keeping the user's logic intact. Return ONLY the corrected code. Do NOT wrap it in markdown. Do not say "Here is the code".`,
+    `You are a code repair expert. Fix this code while keeping the user's logic intact. Return ONLY the corrected code. Do NOT wrap it in markdown. Do not say "Here is the code". CRITICAL: Do NOT output any <think> tags, do NOT explain your reasoning. Just output the raw code.`,
     `Fix this ${language} code:
 
 ${code}
@@ -64,9 +64,15 @@ Error (if any):
 ${error || 'No specific error, but optimize and fix any issues.'}`
   );
 
-  // Strip reasoning tags if model uses chain-of-thought (e.g. DeepSeek/Qwen)
-  if (fixedCode.includes('<think>')) {
-    fixedCode = fixedCode.replace(/<think>[\s\S]*?<\/think>\s*/g, '');
+  // Strip reasoning tags robustly (even if unclosed)
+  const thinkStart = fixedCode.indexOf('<think>');
+  if (thinkStart !== -1) {
+    const thinkEnd = fixedCode.indexOf('</think>');
+    if (thinkEnd !== -1) {
+      fixedCode = fixedCode.substring(0, thinkStart) + fixedCode.substring(thinkEnd + 8);
+    } else {
+      fixedCode = fixedCode.substring(0, thinkStart);
+    }
   }
 
   // Strip markdown code fences and conversational text if the model still adds them

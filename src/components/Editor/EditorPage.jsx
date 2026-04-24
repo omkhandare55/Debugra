@@ -7,6 +7,7 @@ import { LANGUAGES } from '../../utils/languageConfig';
 import Editor from '@monaco-editor/react';
 import AuthModal from '../Auth/AuthModal';
 import ChatPanel from '../Chat/ChatPanel';
+import HistoryPanel from './HistoryPanel';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -68,6 +69,8 @@ export default function EditorPage({ user }) {
   const [execTime, setExecTime] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [stdinOpen, setStdinOpen] = useState(false);
+  const [outputWidth, setOutputWidth] = useState(420);
+  const resizingRef = useRef(false);
 
   // Detect if code uses input functions
   const needsInput = useMemo(() => {
@@ -90,6 +93,7 @@ export default function EditorPage({ user }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [joinId, setJoinId] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
 
   // Language change
   const handleLanguageChange = (e) => {
@@ -115,6 +119,7 @@ export default function EditorPage({ user }) {
         const data = snap.data();
         if (data.code !== undefined && data._lastEditor !== user?.uid) setCode(data.code);
         if (data.language) setLanguage(data.language);
+        if (data.stdin !== undefined && data._lastEditor !== user?.uid) setStdinValue(data.stdin);
         setActiveUsers(data.activeUsers || []);
       }
     });
@@ -125,11 +130,11 @@ export default function EditorPage({ user }) {
     if (!roomId || !user) return;
     const timer = setTimeout(() => {
       updateDoc(doc(db, 'rooms', roomId), {
-        code, language, _lastEditor: user.uid, updatedAt: serverTimestamp(),
+        code, language, stdin: stdinValue, _lastEditor: user.uid, updatedAt: serverTimestamp(),
       }).catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
-  }, [code, language, roomId, user]);
+  }, [code, language, stdinValue, roomId, user]);
 
   // Create/Join Room
   const handleCreateRoom = async () => {
@@ -172,13 +177,7 @@ export default function EditorPage({ user }) {
       } else {
         setExecStatus({ type: 'error', text: result.status?.description || 'Error' });
         if (result.stderr) setActiveOutputTab('stderr');
-        // Auto-explain errors
-        setIsAILoading(true);
-        try {
-          const explanation = await explainError(code, result.stderr || result.compile_output || '', langConfig.name);
-          setAiResponse(explanation);
-          setActiveOutputTab('ai');
-        } catch {} finally { setIsAILoading(false); }
+        // AI explain removed — user can click "Fix" or "Explain" manually to save tokens
       }
     } catch (err) {
       setStderr(err.message);
@@ -258,6 +257,27 @@ export default function EditorPage({ user }) {
   };
 
   const langConfig = LANGUAGES[language];
+
+  // Output pane resize handler
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    const startX = e.clientX;
+    const startW = outputWidth;
+    const onMove = (ev) => {
+      if (!resizingRef.current) return;
+      const diff = startX - ev.clientX;
+      setOutputWidth(Math.max(260, Math.min(800, startW + diff)));
+    };
+    const onUp = () => { resizingRef.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const handleLoadFromHistory = (histCode, histLang) => {
+    setCode(histCode);
+    if (histLang && LANGUAGES[histLang]) setLanguage(histLang);
+  };
 
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -342,11 +362,29 @@ export default function EditorPage({ user }) {
         </div>
         <div className="toolbar-right">
           <button className="ai-btn" onClick={handleTests} disabled={isAILoading}>Tests</button>
-          <button className="ai-btn" onClick={handleVisualize} disabled={isAILoading}>Visualize</button>
-          <button className="ai-btn" onClick={handleExplain} disabled={isAILoading}>Explain</button>
-          <button className="ai-btn fix" onClick={handleFix} disabled={isAILoading}>Fix</button>
-          <button className="topbar-link" onClick={handleDownload} title="Download code file">Download</button>
-          <button className="topbar-link" onClick={handleSave} title="Save to cloud (requires login)">Save</button>
+          <button className="ai-btn" onClick={handleVisualize} disabled={isAILoading}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Visualize
+          </button>
+          <button className="ai-btn" onClick={handleExplain} disabled={isAILoading}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Explain
+          </button>
+          <button className="ai-btn fix" onClick={handleFix} disabled={isAILoading}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            Fix
+          </button>
+          <button className="toolbar-icon-btn" onClick={handleDownload} title="Download code file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button className="toolbar-icon-btn" onClick={handleSave} title="Save to cloud">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </button>
+          {user && (
+            <button className="toolbar-icon-btn" onClick={() => setShowHistory(!showHistory)} title="Saved code history" style={showHistory ? { background: 'var(--bg-active)', color: 'var(--accent)' } : {}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </button>
+          )}
           <span className="kbd-hint">Ctrl+Enter</span>
           <button className="clear-btn" onClick={handleClear}>Clear</button>
           <button className="run-btn" onClick={handleRun} disabled={isRunning}>
@@ -452,10 +490,15 @@ export default function EditorPage({ user }) {
         </div>
 
         {/* RESIZE HANDLE */}
-        <div className="resize-handle" />
+        <div className="resize-handle" onMouseDown={handleResizeStart} />
+
+        {/* HISTORY PANEL */}
+        {showHistory && user && (
+          <HistoryPanel user={user} onLoadCode={handleLoadFromHistory} onClose={() => setShowHistory(false)} />
+        )}
 
         {/* OUTPUT PANE */}
-        <div className="output-pane">
+        <div className="output-pane" style={{ width: outputWidth + 'px' }}>
           <div className="output-tabs">
             <button className={`output-tab ${activeOutputTab === 'stdout' ? 'active' : ''}`}
               onClick={() => setActiveOutputTab('stdout')}>Output</button>
@@ -520,17 +563,41 @@ export default function EditorPage({ user }) {
                       </pre>
                     </div>
                   )}
-                  {aiResponse.steps && Array.isArray(aiResponse.steps) && aiResponse.steps.map((step, i) => (
-                    <div key={i} className="ai-card">
-                      <div className="ai-card-label" style={{ color: 'var(--accent)' }}>Step {i + 1}{step.line ? ` — Line ${step.line}` : ''}</div>
-                      <div className="ai-card-content">{step.description || step.action || JSON.stringify(step)}</div>
-                      {step.variables && (
-                        <code style={{ fontSize: '0.7rem', color: 'var(--yellow)', display: 'block', marginTop: '4px' }}>
-                          {typeof step.variables === 'string' ? step.variables : JSON.stringify(step.variables)}
-                        </code>
-                      )}
+                  {aiResponse.steps && Array.isArray(aiResponse.steps) && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <div className="ai-card-label" style={{ color: 'var(--accent)', marginBottom: '8px', fontSize: '0.7rem' }}>
+                        ▶ Execution Trace ({aiResponse.steps.length} steps)
+                      </div>
+                      {aiResponse.steps.map((step, i) => {
+                        // Handle both string steps and object steps
+                        const isString = typeof step === 'string';
+                        const line = isString ? null : step.line;
+                        const code = isString ? null : step.code;
+                        const desc = isString ? step : (step.description || step.explanation || step.action || '');
+                        const vars = isString ? null : step.variables;
+                        return (
+                          <div key={i} className="ai-card" style={{ padding: '8px 10px', marginBottom: '6px', borderLeftColor: 'var(--accent)', borderLeftWidth: '3px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                              {line && <span style={{ fontSize: '0.62rem', color: 'var(--text-2)', fontFamily: "'JetBrains Mono', monospace" }}>Line {line}</span>}
+                            </div>
+                            {code && (
+                              <pre style={{ fontSize: '0.72rem', color: 'var(--yellow)', fontFamily: "'JetBrains Mono', monospace", margin: '4px 0', padding: '4px 8px', background: 'var(--bg-0)', borderRadius: '3px', whiteSpace: 'pre-wrap' }}>{code}</pre>
+                            )}
+                            {desc && <div className="ai-card-content" style={{ fontSize: '0.72rem' }}>{desc}</div>}
+                            {vars && (
+                              <div style={{ marginTop: '4px', padding: '4px 8px', background: 'rgba(78,201,176,0.08)', borderRadius: '3px', border: '1px solid rgba(78,201,176,0.15)' }}>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--green)', fontWeight: 600 }}>Variables: </span>
+                                <code style={{ fontSize: '0.68rem', color: 'var(--yellow)', fontFamily: "'JetBrains Mono', monospace" }}>
+                                  {typeof vars === 'string' ? vars : Object.entries(vars).map(([k,v]) => `${k} = ${JSON.stringify(v)}`).join(', ')}
+                                </code>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  )}
                   {aiResponse.testCases && Array.isArray(aiResponse.testCases) && aiResponse.testCases.map((tc, i) => (
                     <div key={i} className="ai-card">
                       <div className="ai-card-label" style={{ color: 'var(--green)' }}>
@@ -543,16 +610,28 @@ export default function EditorPage({ user }) {
                       </div>
                     </div>
                   ))}
-                  {aiResponse.complexity && (
+                  {(aiResponse.complexity || aiResponse.timeComplexity) && (
                     <div className="ai-card info">
                       <div className="ai-card-label">Complexity</div>
                       <div className="ai-card-content">
-                        Time: <strong style={{ color: 'var(--text-0)' }}>{aiResponse.complexity.time}</strong> | 
-                        Space: <strong style={{ color: 'var(--text-0)' }}>{aiResponse.complexity.space}</strong>
+                        Time: <strong style={{ color: 'var(--text-0)' }}>{aiResponse.complexity?.time || aiResponse.timeComplexity || 'N/A'}</strong> | 
+                        Space: <strong style={{ color: 'var(--text-0)' }}>{aiResponse.complexity?.space || aiResponse.spaceComplexity || 'N/A'}</strong>
                       </div>
                     </div>
                   )}
-                  {!aiResponse.issue && !aiResponse.explanation && !aiResponse.steps && !aiResponse.testCases && !aiResponse.fixedCode && !aiResponse.complexity && (
+                  {aiResponse.summary && (
+                    <div className="ai-card" style={{ borderColor: 'rgba(78,201,176,0.3)' }}>
+                      <div className="ai-card-label" style={{ color: 'var(--green)' }}>Summary</div>
+                      <div className="ai-card-content">{aiResponse.summary}</div>
+                    </div>
+                  )}
+                  {aiResponse.bestPractice && (
+                    <div className="ai-card" style={{ borderColor: 'rgba(220,220,170,0.3)' }}>
+                      <div className="ai-card-label" style={{ color: 'var(--yellow)' }}>💡 Best Practice</div>
+                      <div className="ai-card-content">{aiResponse.bestPractice}</div>
+                    </div>
+                  )}
+                  {!aiResponse.issue && !aiResponse.explanation && !aiResponse.steps && !aiResponse.testCases && !aiResponse.fixedCode && !aiResponse.complexity && !aiResponse.timeComplexity && !aiResponse.summary && (
                     <pre style={{ fontSize: '0.75rem', color: 'var(--text-1)', whiteSpace: 'pre-wrap' }}>{JSON.stringify(aiResponse, null, 2)}</pre>
                   )}
                 </div>
@@ -573,20 +652,52 @@ export default function EditorPage({ user }) {
             {execTime && (
               <div className="exec-item">Time: <strong>{execTime}</strong></div>
             )}
+            {stderr && execStatus.type === 'error' && (
+              <div className="exec-item" style={{ color: 'var(--red)', fontSize: '0.65rem' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                See Errors tab for details
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ===== STATUS BAR ===== */}
+      {/* ===== STATUS BAR (VS Code style) ===== */}
       <div className="statusbar">
         <div className="statusbar-left">
-          <span>{langConfig.name}</span>
-          <span>UTF-8</span>
+          <span title={execStatus.text}>
+            {execStatus.type === 'error' ? (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f44747" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> 1</>
+            ) : execStatus.type === 'success' ? (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3fb950" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> 0</>
+            ) : (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> 0</>
+            )}
+          </span>
+          <span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+            {langConfig.name}
+          </span>
+          <span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+            UTF-8
+          </span>
           <span>Ln {cursorPos.line}, Col {cursorPos.col}</span>
+          <span>Spaces: 4</span>
         </div>
         <div className="statusbar-right">
-          <span>Wandbox API</span>
-          <span>Debugra Editor</span>
+          {roomId && <span style={{ color: '#4ec9b0' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            {activeUsers.length} online
+          </span>}
+          <span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Wandbox
+          </span>
+          <span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="rgba(255,255,255,0.8)"/></svg>
+            Debugra
+          </span>
         </div>
       </div>
 

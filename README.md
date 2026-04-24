@@ -4,24 +4,24 @@ A professional online code editor with real-time collaboration, multi-language e
 
 ## Features
 
-- **Code Execution** — Run 18+ programming languages (Python, Java, C++, JavaScript, Go, Rust, Ruby, and more) powered by the Wandbox compiler
-- **Monaco Editor** — VS Code-like editing experience with syntax highlighting, autocomplete, bracket matching, and code formatting
-- **AI Debugging Tools** — Error explanations, one-click fixes, logic breakdowns, execution visualization, and test case generation (powered by Groq/Llama)
-- **Real-Time Collaboration** — Create rooms, share a room ID, and code together with live sync via Firebase
+- **VS Code-Like UI** — Professional, responsive design with an integrated status bar, scalable output panes, and keyboard shortcuts
+- **Code Execution** — Run 18+ programming languages (Python, Java, C++, JavaScript, Go, Rust, C# Mono, and more) powered by the Wandbox compiler API
+- **Monaco Editor** — High-performance editing experience with syntax highlighting, autocomplete, bracket matching, and code formatting
+- **AI Debugging Tools** — Error explanations, one-click fixes, logic breakdowns, execution visualization, and test case generation (powered by Groq's fast Llama 3.3 70B model)
+- **Real-Time Collaboration** — Create rooms, share a room ID, and code together with live sync of code and input streams via Firebase
 - **Team Chat** — In-editor messaging for collaborators
-- **User Input (stdin)** — Auto-detects input functions (`input()`, `Scanner`, `cin`, etc.) and prompts for stdin before execution
-- **Save & Download** — Sign in to persist code to Firebase, download files locally
-- **Responsive** — Works on desktop, tablet, and mobile
+- **Saved Code History** — Authenticated users can save their code snippets and access them anytime through a dedicated History Panel sidebar
+- **User Input (stdin)** — Auto-detects input functions (`input()`, `Scanner`, `cin`, etc.) and seamlessly syncs stdin across all users in a room
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, Vite, Monaco Editor |
-| Styling | Vanilla CSS (dark theme) |
+| Styling | Vanilla CSS (Dark theme, VS Code aesthetics) |
 | Auth & Database | Firebase Auth, Cloud Firestore |
-| Code Execution | Wandbox API (free, no key needed) |
-| AI Features | Groq SDK (Llama 3) |
+| Code Execution | Wandbox API (Serverless execution) |
+| AI Features | Groq SDK (llama-3.3-70b-versatile) |
 | Backend | Express.js (Node.js) |
 
 ## Project Structure
