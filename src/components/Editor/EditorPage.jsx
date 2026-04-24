@@ -89,11 +89,19 @@ export default function EditorPage({ user }) {
 
   // Room state
   const [roomId, setRoomId] = useState(null);
+  const [roomData, setRoomData] = useState(null);
   const [activeUsers, setActiveUsers] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [joinId, setJoinId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+
+  // Derived Access Control
+  const isAuthor = roomData?.createdBy === user?.uid;
+  const isAllowedEditor = roomData?.allowedEditors?.includes(user?.uid);
+  const isCurrentEditor = roomData?.currentEditor === user?.uid;
+  const isReadOnly = roomId ? !isCurrentEditor : false;
+  const currentEditorName = activeUsers.find(u => u.uid === roomData?.currentEditor)?.displayName || 'None';
 
   // Language change
   const handleLanguageChange = (e) => {
@@ -117,6 +125,7 @@ export default function EditorPage({ user }) {
     const unsub = onSnapshot(doc(db, 'rooms', roomId), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        setRoomData(data);
         if (data.code !== undefined && data._lastEditor !== user?.uid) setCode(data.code);
         if (data.language) setLanguage(data.language);
         if (data.stdin !== undefined && data._lastEditor !== user?.uid) setStdinValue(data.stdin);
@@ -127,14 +136,17 @@ export default function EditorPage({ user }) {
   }, [roomId, user]);
 
   useEffect(() => {
-    if (!roomId || !user) return;
+    if (!roomId || !user || !roomData) return;
+    // Only auto-save if we are the current editor
+    if (roomData.currentEditor && roomData.currentEditor !== user.uid) return;
+    
     const timer = setTimeout(() => {
       updateDoc(doc(db, 'rooms', roomId), {
         code, language, stdin: stdinValue, _lastEditor: user.uid, updatedAt: serverTimestamp(),
       }).catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
-  }, [code, language, stdinValue, roomId, user]);
+  }, [code, language, stdinValue, roomId, user, roomData?.currentEditor]);
 
   // Create/Join Room
   const handleCreateRoom = async () => {
@@ -143,6 +155,9 @@ export default function EditorPage({ user }) {
     await setDoc(doc(db, 'rooms', id), {
       name: `Room ${id}`, createdBy: user.uid, code, language,
       activeUsers: [{ uid: user.uid, displayName: user.displayName }],
+      allowedEditors: [user.uid],
+      currentEditor: user.uid,
+      editRequests: [],
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
     setRoomId(id);
@@ -153,6 +168,45 @@ export default function EditorPage({ user }) {
   const handleJoinRoom = () => {
     if (!user) { setShowAuth(true); return; }
     if (joinId.trim()) { setRoomId(joinId.trim()); toast.success(`Joined room: ${joinId.trim()}`); setShowJoin(false); setJoinId(''); }
+  };
+
+  // Access Control Actions
+  const handleRequestAccess = async () => {
+    if (!user || !roomId || !roomData) return;
+    if (roomData.editRequests?.some(r => r.uid === user.uid)) {
+      toast.error('Access request already sent.');
+      return;
+    }
+    const newRequests = [...(roomData.editRequests || []), { uid: user.uid, displayName: user.displayName }];
+    await updateDoc(doc(db, 'rooms', roomId), { editRequests: newRequests });
+    toast.success('Requested edit access from the author.');
+  };
+
+  const handleApproveAccess = async (requestUid) => {
+    if (!roomId || !roomData || !isAuthor) return;
+    const newAllowed = [...new Set([...(roomData.allowedEditors || []), requestUid])];
+    const newRequests = (roomData.editRequests || []).filter(r => r.uid !== requestUid);
+    await updateDoc(doc(db, 'rooms', roomId), { allowedEditors: newAllowed, editRequests: newRequests });
+    toast.success('Access granted.');
+  };
+
+  const handleDenyAccess = async (requestUid) => {
+    if (!roomId || !roomData || !isAuthor) return;
+    const newRequests = (roomData.editRequests || []).filter(r => r.uid !== requestUid);
+    await updateDoc(doc(db, 'rooms', roomId), { editRequests: newRequests });
+    toast.info('Access denied.');
+  };
+
+  const handleTakeControl = async () => {
+    if (!user || !roomId || !isAllowedEditor) return;
+    await updateDoc(doc(db, 'rooms', roomId), { currentEditor: user.uid });
+    toast.success('You are now editing.');
+  };
+
+  const handleReleaseControl = async () => {
+    if (!user || !roomId || !isCurrentEditor) return;
+    await updateDoc(doc(db, 'rooms', roomId), { currentEditor: null });
+    toast.success('You released the editor lock.');
   };
 
   // Run code
@@ -406,22 +460,65 @@ export default function EditorPage({ user }) {
               <span className={`dot ${DOT_CLASS[language] || 'dot-default'}`} />
               <span>{FILE_NAMES[language] || 'main.txt'}</span>
             </div>
+
+            {/* Access Control UI */}
+            {roomId && (
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem' }}>
+                {isAuthor && roomData?.editRequests?.length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', marginRight: '8px', paddingRight: '8px', borderRight: '1px solid var(--border)' }}>
+                    {roomData.editRequests.map(req => (
+                      <div key={req.uid} style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-3)', padding: '2px 6px', borderRadius: '4px', gap: '6px' }}>
+                        <span style={{ color: 'var(--yellow)' }}>{req.displayName} requests edit</span>
+                        <button onClick={() => handleApproveAccess(req.uid)} style={{ color: '#3fb950', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Approve">✓</button>
+                        <button onClick={() => handleDenyAccess(req.uid)} style={{ color: '#f44747', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Deny">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <span style={{ color: 'var(--text-2)' }}>Editor: <strong style={{ color: isCurrentEditor ? 'var(--green)' : 'var(--accent)' }}>{isCurrentEditor ? 'You' : currentEditorName}</strong></span>
+                
+                {isReadOnly && !isAllowedEditor && (
+                  <button onClick={handleRequestAccess} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Request Access
+                  </button>
+                )}
+                
+                {isReadOnly && isAllowedEditor && (
+                  <button onClick={handleTakeControl} style={{ background: '#2ea043', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Take Control
+                  </button>
+                )}
+
+                {isCurrentEditor && (
+                  <button onClick={handleReleaseControl} style={{ background: 'var(--bg-3)', color: 'var(--text-1)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                    Release
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-          <div id="editor-container" style={{ flex: 1, minHeight: 0 }}>
+          <div id="editor-container" style={{ flex: 1, minHeight: 0, opacity: isReadOnly ? 0.8 : 1 }}>
+            {isReadOnly && (
+              <div style={{ position: 'absolute', top: '10px', right: '20px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 10px', borderRadius: '4px', color: '#ccc', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', pointerEvents: 'none', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Read Only
+              </div>
+            )}
             <Editor
               height="100%"
               language={langConfig.monacoLang}
               value={code}
-              onChange={(val) => setCode(val || '')}
+              onChange={(val) => { if (!isReadOnly) setCode(val || ''); }}
               onMount={handleEditorMount}
               theme="vs-dark"
               options={{
+                readOnly: isReadOnly,
                 fontSize, fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                 minimap: { enabled: false }, padding: { top: 12 },
                 scrollBeyondLastLine: false, lineNumbers: 'on',
-                renderLineHighlight: 'line', automaticLayout: true,
+                renderLineHighlight: isReadOnly ? 'none' : 'line', automaticLayout: true,
                 tabSize: 4, wordWrap: 'on', smoothScrolling: true,
-                cursorBlinking: 'smooth', cursorSmoothCaretAnimation: 'on',
+                cursorBlinking: isReadOnly ? 'solid' : 'smooth', cursorSmoothCaretAnimation: 'on',
                 bracketPairColorization: { enabled: true },
                 guides: { bracketPairs: true },
                 suggestOnTriggerCharacters: true, quickSuggestions: true,

@@ -6,7 +6,7 @@ import { useState, useRef } from 'react';
 export default function CodeEditor({
   code, setCode, language, setLanguage,
   onRun, onFix, onExplain, onVisualize, onGenerateTests,
-  isRunning, isAILoading
+  isRunning, isAILoading, readOnly = false
 }) {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [langSearch, setLangSearch] = useState('');
@@ -32,21 +32,30 @@ export default function CodeEditor({
   );
 
   return (
-    <div className="h-full flex flex-col" style={{ background: 'var(--bg-secondary)' }}>
+    <div className="h-full flex flex-col" style={{ background: 'var(--bg-secondary)', position: 'relative' }}>
+      {/* ReadOnly Overlay Indicator (optional) */}
+      {readOnly && (
+        <div className="absolute top-12 right-6 z-10 bg-black/50 text-white/80 px-3 py-1 rounded-md text-xs backdrop-blur-sm border border-white/10 pointer-events-none flex items-center gap-1.5">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Read Only
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between px-2 py-1.5 gap-2 flex-wrap"
         style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
         
         {/* Language Selector */}
         <div className="relative">
-          <button onClick={() => { setShowLangMenu(!showLangMenu); setLangSearch(''); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:brightness-110"
+          <button onClick={() => { if (!readOnly) { setShowLangMenu(!showLangMenu); setLangSearch(''); } }}
+            disabled={readOnly}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
             style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
             <span className="text-sm">{langConfig.icon}</span>
             <span>{langConfig.name}</span>
             <ChevronDown size={12} style={{ color: 'var(--text-muted)' }} />
           </button>
-          {showLangMenu && (
+          {showLangMenu && !readOnly && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)} />
               <div className="absolute top-full left-0 mt-1 py-1 rounded-xl z-50 min-w-[200px] animate-fade-in"
@@ -92,8 +101,8 @@ export default function CodeEditor({
             className="btn-secondary text-xs py-1.5 px-2.5" title="Explain Logic">
             <Brain size={12} /> <span className="hidden lg:inline">Explain</span>
           </button>
-          <button onClick={onFix} disabled={isAILoading}
-            className="text-xs py-1.5 px-2.5 rounded-lg font-medium cursor-pointer transition-all flex items-center gap-1.5"
+          <button onClick={onFix} disabled={isAILoading || readOnly}
+            className={`text-xs py-1.5 px-2.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${readOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/10'}`}
             title="Fix My Code"
             style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--warning)' }}>
             <Wand2 size={12} /> <span className="hidden lg:inline">Fix</span>
@@ -107,24 +116,27 @@ export default function CodeEditor({
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0" style={{ opacity: readOnly ? 0.85 : 1 }}>
         <Editor
           height="100%"
           language={langConfig.monacoLang}
           value={code}
-          onChange={(val) => setCode(val || '')}
+          onChange={(val) => {
+            if (!readOnly) setCode(val || '');
+          }}
           onMount={handleEditorMount}
           theme="vs-dark"
           options={{
+            readOnly: readOnly,
             fontSize: 14,
             fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
             minimap: { enabled: false },
             padding: { top: 16, bottom: 16 },
             scrollBeyondLastLine: false,
             smoothScrolling: true,
-            cursorBlinking: 'smooth',
+            cursorBlinking: readOnly ? 'solid' : 'smooth',
             cursorSmoothCaretAnimation: 'on',
-            renderLineHighlight: 'all',
+            renderLineHighlight: readOnly ? 'none' : 'all',
             lineNumbers: 'on',
             roundedSelection: true,
             automaticLayout: true,
@@ -132,9 +144,9 @@ export default function CodeEditor({
             wordWrap: 'on',
             bracketPairColorization: { enabled: true },
             guides: { bracketPairs: true },
-            suggestOnTriggerCharacters: true,
-            quickSuggestions: true,
-            formatOnPaste: true,
+            suggestOnTriggerCharacters: !readOnly,
+            quickSuggestions: !readOnly,
+            formatOnPaste: !readOnly,
           }}
         />
       </div>
