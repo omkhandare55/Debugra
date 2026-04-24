@@ -69,7 +69,7 @@ async function executeCode(sourceCode, languageId, stdin = '') {
     const stdout = data.program_output || '';
     const stderr = data.compiler_error || data.program_error || '';
     const compileOut = data.compiler_output || '';
-    const exitCode = data.status || 0;
+    const exitCode = parseInt(data.status, 10) || 0;
 
     const hasCompileError = data.compiler_error && data.compiler_error.trim().length > 0 && exitCode !== 0;
     const hasRuntimeError = exitCode !== 0 && !hasCompileError;
