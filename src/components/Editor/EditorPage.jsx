@@ -137,8 +137,8 @@ export default function EditorPage({ user }) {
 
   useEffect(() => {
     if (!roomId || !user || !roomData) return;
-    // Only auto-save if we are the current editor
-    if (roomData.currentEditor && roomData.currentEditor !== user.uid) return;
+    // Strictly ONLY auto-save if this user currently holds the editor lock
+    if (roomData.currentEditor !== user.uid) return;
     
     const timer = setTimeout(() => {
       updateDoc(doc(db, 'rooms', roomId), {
@@ -403,7 +403,7 @@ export default function EditorPage({ user }) {
       {/* ===== TOOLBAR ===== */}
       <div className="toolbar">
         <div className="toolbar-left">
-          <select className="lang-select" value={language} onChange={handleLanguageChange}>
+          <select className="lang-select" value={language} onChange={handleLanguageChange} disabled={isReadOnly}>
             {Object.entries(LANGUAGES).map(([key, lang]) => (
               <option key={key} value={key}>{lang.name}</option>
             ))}
@@ -415,7 +415,7 @@ export default function EditorPage({ user }) {
           </div>
         </div>
         <div className="toolbar-right">
-          <button className="ai-btn" onClick={handleTests} disabled={isAILoading}>Tests</button>
+          <button className="ai-btn" onClick={handleTests} disabled={isAILoading || isReadOnly}>Tests</button>
           <button className="ai-btn" onClick={handleVisualize} disabled={isAILoading}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             Visualize
@@ -424,14 +424,14 @@ export default function EditorPage({ user }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
             Explain
           </button>
-          <button className="ai-btn fix" onClick={handleFix} disabled={isAILoading}>
+          <button className="ai-btn fix" onClick={handleFix} disabled={isAILoading || isReadOnly}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
             Fix
           </button>
           <button className="toolbar-icon-btn" onClick={handleDownload} title="Download code file">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-          <button className="toolbar-icon-btn" onClick={handleSave} title="Save to cloud">
+          <button className="toolbar-icon-btn" onClick={handleSave} title="Save to cloud" disabled={isReadOnly}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
           {user && (
@@ -440,7 +440,7 @@ export default function EditorPage({ user }) {
             </button>
           )}
           <span className="kbd-hint">Ctrl+Enter</span>
-          <button className="clear-btn" onClick={handleClear}>Clear</button>
+          <button className="clear-btn" onClick={handleClear} disabled={isReadOnly}>Clear</button>
           <button className="run-btn" onClick={handleRun} disabled={isRunning}>
             {isRunning ? (
               <><span className="spinner" /> Running...</>
