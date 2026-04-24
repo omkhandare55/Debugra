@@ -209,6 +209,15 @@ export default function EditorPage({ user }) {
     toast.success('You released the editor lock.');
   };
 
+  const handleRevokeAccess = async (revokeUid) => {
+    if (!roomId || !roomData || !isAuthor) return;
+    const newAllowed = (roomData.allowedEditors || []).filter(uid => uid !== revokeUid);
+    const updates = { allowedEditors: newAllowed };
+    if (roomData.currentEditor === revokeUid) updates.currentEditor = null;
+    await updateDoc(doc(db, 'rooms', roomId), updates);
+    toast.info('Access revoked.');
+  };
+
   // Run code
   const handleRun = useCallback(async () => {
     if (isRunning) return;
@@ -463,7 +472,7 @@ export default function EditorPage({ user }) {
 
             {/* Access Control UI */}
             {roomId && (
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem' }}>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '60vw', paddingBottom: '2px' }} className="hide-scrollbar">
                 {isAuthor && roomData?.editRequests?.length > 0 && (
                   <div style={{ display: 'flex', gap: '6px', marginRight: '8px', paddingRight: '8px', borderRight: '1px solid var(--border)' }}>
                     {roomData.editRequests.map(req => (
@@ -475,23 +484,39 @@ export default function EditorPage({ user }) {
                     ))}
                   </div>
                 )}
+
+                {/* Show allowed editors to the Author so they can kick them */}
+                {isAuthor && roomData?.allowedEditors?.length > 1 && (
+                  <div style={{ display: 'flex', gap: '6px', marginRight: '8px', paddingRight: '8px', borderRight: '1px solid var(--border)' }}>
+                    <span style={{ color: 'var(--text-2)', marginRight: '2px' }}>Allowed:</span>
+                    {roomData.allowedEditors.filter(uid => uid !== user.uid).map(uid => {
+                      const editorName = activeUsers.find(u => u.uid === uid)?.displayName || 'Guest';
+                      return (
+                        <div key={uid} style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-1)', padding: '2px 6px', borderRadius: '4px', gap: '4px' }}>
+                          <span style={{ color: 'var(--text-0)' }}>{editorName}</span>
+                          <button onClick={() => handleRevokeAccess(uid)} style={{ color: '#f44747', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.6rem' }} title="Revoke Access">✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 
                 <span style={{ color: 'var(--text-2)' }}>Editor: <strong style={{ color: isCurrentEditor ? 'var(--green)' : 'var(--accent)' }}>{isCurrentEditor ? 'You' : currentEditorName}</strong></span>
                 
                 {isReadOnly && !isAllowedEditor && (
-                  <button onClick={handleRequestAccess} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                  <button onClick={handleRequestAccess} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>
                     Request Access
                   </button>
                 )}
                 
                 {isReadOnly && isAllowedEditor && (
-                  <button onClick={handleTakeControl} style={{ background: '#2ea043', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                  <button onClick={handleTakeControl} style={{ background: '#2ea043', color: '#fff', border: 'none', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>
                     Take Control
                   </button>
                 )}
 
                 {isCurrentEditor && (
-                  <button onClick={handleReleaseControl} style={{ background: 'var(--bg-3)', color: 'var(--text-1)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                  <button onClick={handleReleaseControl} style={{ background: 'var(--bg-3)', color: 'var(--text-1)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}>
                     Release
                   </button>
                 )}
