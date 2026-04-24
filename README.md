@@ -162,10 +162,4 @@ Python, JavaScript, TypeScript, Java, C++, C, C#, Go, Rust, Ruby, PHP, Swift, Pe
 
 ## Team
 
-Built for Hackathon 2026 — Debugra Team
-
-## License
-
-MIT
-
-
+Built for Hackathon Svkm 2026 — Debugra Team 
