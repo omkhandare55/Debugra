@@ -95,7 +95,7 @@ export default function EditorPage({ user }) {
   const [showJoin, setShowJoin] = useState(false);
   const [joinId, setJoinId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-  const [mobileTab, setMobileTab] = useState('code'); // 'code' | 'output' | 'chat'
+  const [mobileTab, setMobileTab] = useState('code'); // 'code' | 'output' | 'chat' | 'saved'
 
   // Detect mobile
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -623,7 +623,7 @@ export default function EditorPage({ user }) {
         {/* RESIZE HANDLE (desktop only) */}
         {!isMobile && <div className="resize-handle" onMouseDown={handleResizeStart} />}
 
-        {/* HISTORY PANEL */}
+        {/* HISTORY PANEL (desktop) */}
         {showHistory && user && !isMobile && (
           <HistoryPanel user={user} onLoadCode={handleLoadFromHistory} onClose={() => setShowHistory(false)} />
         )}
@@ -841,6 +841,19 @@ export default function EditorPage({ user }) {
         <ChatPanel roomId={roomId} user={user} isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
       )}
 
+      {/* HISTORY PANEL (mobile full-screen) */}
+      {isMobile && mobileTab === 'saved' && user && (
+        <div style={{ position:'fixed', inset:0, zIndex:50, background:'var(--bg-0)', display:'flex', flexDirection:'column' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid var(--border)', background:'var(--bg-1)' }}>
+            <span style={{ fontSize:'0.85rem', fontWeight:700, color:'var(--text-0)' }}>Saved Code</span>
+            <button onClick={() => setMobileTab('code')} style={{ background:'none', border:'none', color:'var(--text-1)', fontSize:'1.2rem', cursor:'pointer', padding:'4px 8px' }}>✕</button>
+          </div>
+          <div style={{ flex:1, overflow:'auto' }}>
+            <HistoryPanel user={user} onLoadCode={(c,l) => { handleLoadFromHistory(c,l); setMobileTab('code'); }} onClose={() => setMobileTab('code')} />
+          </div>
+        </div>
+      )}
+
       {/* ===== MOBILE BOTTOM NAV ===== */}
       {isMobile && (
         <div className="mobile-bottom-nav">
@@ -856,6 +869,12 @@ export default function EditorPage({ user }) {
             <span>Output</span>
             {stderr && execStatus.type === 'error' && <span className="mobile-nav-dot" />}
           </button>
+          {user && (
+            <button className={`mobile-nav-btn ${mobileTab === 'saved' ? 'active' : ''}`} onClick={() => setMobileTab('saved')}>
+              <i className="bi bi-clock-history" />
+              <span>Saved</span>
+            </button>
+          )}
           {roomId && (
             <button className={`mobile-nav-btn ${mobileTab === 'chat' ? 'active' : ''}`} onClick={() => setMobileTab('chat')}>
               <i className="bi bi-chat-dots" />
