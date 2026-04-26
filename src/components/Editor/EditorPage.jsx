@@ -95,6 +95,15 @@ export default function EditorPage({ user }) {
   const [showJoin, setShowJoin] = useState(false);
   const [joinId, setJoinId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [mobileTab, setMobileTab] = useState('code'); // 'code' | 'output' | 'chat'
+
+  // Detect mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Derived Access Control
   const isAuthor = roomData?.createdBy === user?.uid;
@@ -463,7 +472,7 @@ export default function EditorPage({ user }) {
       {/* ===== MAIN SPLIT ===== */}
       <div className="main-split">
         {/* EDITOR PANE */}
-        <div className="editor-pane">
+        <div className="editor-pane" style={isMobile && mobileTab !== 'code' ? { display: 'none' } : {}}>
           <div className="editor-tab-bar">
             <div className="editor-tab">
               <span className={`dot ${DOT_CLASS[language] || 'dot-default'}`} />
@@ -611,16 +620,16 @@ export default function EditorPage({ user }) {
           </div>
         </div>
 
-        {/* RESIZE HANDLE */}
-        <div className="resize-handle" onMouseDown={handleResizeStart} />
+        {/* RESIZE HANDLE (desktop only) */}
+        {!isMobile && <div className="resize-handle" onMouseDown={handleResizeStart} />}
 
         {/* HISTORY PANEL */}
-        {showHistory && user && (
+        {showHistory && user && !isMobile && (
           <HistoryPanel user={user} onLoadCode={handleLoadFromHistory} onClose={() => setShowHistory(false)} />
         )}
 
         {/* OUTPUT PANE */}
-        <div className="output-pane" style={{ width: outputWidth + 'px' }}>
+        <div className="output-pane" style={isMobile ? (mobileTab === 'output' ? { display: 'flex', width: '100%' } : { display: 'none' }) : { width: outputWidth + 'px' }}>
           <div className="output-tabs">
             <button className={`output-tab ${activeOutputTab === 'stdout' ? 'active' : ''}`}
               onClick={() => setActiveOutputTab('stdout')}>Output</button>
@@ -823,8 +832,39 @@ export default function EditorPage({ user }) {
         </div>
       </div>
 
-      {/* Chat */}
-      <ChatPanel roomId={roomId} user={user} isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
+      {/* Chat - on mobile show as full tab */}
+      {isMobile && mobileTab === 'chat' && roomId ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <ChatPanel roomId={roomId} user={user} isOpen={true} onToggle={() => setMobileTab('code')} />
+        </div>
+      ) : (
+        <ChatPanel roomId={roomId} user={user} isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
+      )}
+
+      {/* ===== MOBILE BOTTOM NAV ===== */}
+      {isMobile && (
+        <div className="mobile-bottom-nav">
+          <button className={`mobile-nav-btn ${mobileTab === 'code' ? 'active' : ''}`} onClick={() => setMobileTab('code')}>
+            <i className="bi bi-code-slash" />
+            <span>Code</span>
+          </button>
+          <button className="mobile-nav-run" onClick={handleRun} disabled={isRunning}>
+            {isRunning ? <span className="spinner" /> : <i className="bi bi-play-fill" />}
+          </button>
+          <button className={`mobile-nav-btn ${mobileTab === 'output' ? 'active' : ''}`} onClick={() => setMobileTab('output')}>
+            <i className="bi bi-terminal" />
+            <span>Output</span>
+            {stderr && execStatus.type === 'error' && <span className="mobile-nav-dot" />}
+          </button>
+          {roomId && (
+            <button className={`mobile-nav-btn ${mobileTab === 'chat' ? 'active' : ''}`} onClick={() => setMobileTab('chat')}>
+              <i className="bi bi-chat-dots" />
+              <span>Chat</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} initialMode={authMode} />}
     </div>
   );

@@ -748,3 +748,67 @@ body {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ============ MOBILE BOTTOM NAV ============ */
+.mobile-bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 56px;
+  background: #1a1a1a;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 40;
+}
+.mobile-nav-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: none; color: var(--text-2); cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 0.6rem; font-weight: 600;
+  padding: 6px 14px; border-radius: 8px; transition: all 0.15s;
+  position: relative; min-width: 56px;
+}
+.mobile-nav-btn i { font-size: 1.2rem; }
+.mobile-nav-btn.active { color: var(--accent); background: rgba(0,120,212,0.1); }
+.mobile-nav-btn:active { transform: scale(0.92); }
+.mobile-nav-dot {
+  position: absolute; top: 4px; right: 10px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--red);
+}
+.mobile-nav-run {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: #2ea043; border: 3px solid #1a1a1a; color: white;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1.4rem; transition: all 0.15s;
+  box-shadow: 0 2px 12px rgba(46,160,67,0.4);
+  margin-top: -12px;
+}
+.mobile-nav-run:active { transform: scale(0.9); }
+.mobile-nav-run:disabled { background: var(--bg-3); color: var(--text-2); box-shadow: none; }
+
+/* ============ MOBILE OVERRIDES ============ */
+@media (max-width: 768px) {
+  .topbar-right .room-controls { display: none; }
+  .topbar-title { display: none; }
+  .topbar-sep { display: none; }
+  .toolbar { height: auto; padding: 6px 8px; gap: 4px; flex-wrap: wrap; }
+  .toolbar-right { flex-wrap: wrap; gap: 4px; }
+  .toolbar-left { width: 100%; }
+  .lang-select { flex: 1; min-width: 0; }
+  .kbd-hint { display: none; }
+  .run-btn { display: none; }
+  .clear-btn { display: none; }
+  .font-size-ctrl { display: none; }
+  .statusbar { display: none; }
+  .resize-handle { display: none; }
+  .history-panel { display: none; }
+  .chat-fab { display: none !important; }
+
+  .main-split { flex-direction: column; flex: 1; overflow: hidden; }
+  .editor-pane { flex: 1; min-height: 0; border-right: none; min-width: 0; }
+  .output-pane {
+    width: 100% !important; max-width: none !important; min-width: 0 !important;
+    flex: 1; min-height: 0;
+  }
+}
