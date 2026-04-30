@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { auth, db } from '../../services/firebase';
 import { executeCode, explainError, fixCode, explainLogic, generateTestCases, visualizeExecution } from '../../services/api';
 import { LANGUAGES } from '../../utils/languageConfig';
+import { registerSnippets } from '../../utils/snippetsConfig';
 import Editor from '@monaco-editor/react';
 import AuthModal from '../Auth/AuthModal';
 import ChatPanel from '../Chat/ChatPanel';
@@ -117,6 +118,14 @@ export default function EditorPage({ user }) {
     const lang = e.target.value;
     setLanguage(lang);
     setCode(LANGUAGES[lang].template);
+  };
+
+  // Register snippets once before editor mounts
+  const handleEditorWillMount = (monaco) => {
+    if (!window.__MONACO_SNIPPETS_REGISTERED__) {
+      registerSnippets(monaco);
+      window.__MONACO_SNIPPETS_REGISTERED__ = true;
+    }
   };
 
   // Editor mount
@@ -252,7 +261,8 @@ export default function EditorPage({ user }) {
         // AI explain removed — user can click "Fix" or "Explain" manually to save tokens
       }
     } catch (err) {
-      setStderr(err.message);
+      const actualError = err.response?.data?.error || err.message;
+      setStderr(actualError);
       setExecStatus({ type: 'error', text: 'Failed' });
       setActiveOutputTab('stderr');
     }
@@ -543,6 +553,7 @@ export default function EditorPage({ user }) {
               language={langConfig.monacoLang}
               value={code}
               onChange={(val) => { if (!isReadOnly) setCode(val || ''); }}
+              beforeMount={handleEditorWillMount}
               onMount={handleEditorMount}
               theme="vs-dark"
               options={{

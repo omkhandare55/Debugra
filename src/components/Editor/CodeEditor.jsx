@@ -2,6 +2,7 @@ import Editor from '@monaco-editor/react';
 import { LANGUAGES } from '../../utils/languageConfig';
 import { Play, Wand2, Brain, Eye, FlaskConical, ChevronDown, Loader2, Search } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { registerSnippets } from '../../utils/snippetsConfig';
 
 export default function CodeEditor({
   code, setCode, language, setLanguage,
@@ -12,9 +13,17 @@ export default function CodeEditor({
   const [langSearch, setLangSearch] = useState('');
   const editorRef = useRef(null);
 
-  const handleEditorMount = (editor) => {
+  const handleEditorMount = (editor, monaco) => {
     editorRef.current = editor;
-    editor.addCommand(2048 | 3, () => onRun()); // Ctrl+Enter
+    // Add Ctrl+Enter shortcut for Run
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => onRun());
+  };
+
+  const handleEditorWillMount = (monaco) => {
+    if (!window.__MONACO_SNIPPETS_REGISTERED__) {
+      registerSnippets(monaco);
+      window.__MONACO_SNIPPETS_REGISTERED__ = true;
+    }
   };
 
   const getSelectedCode = () => {
@@ -124,6 +133,7 @@ export default function CodeEditor({
           onChange={(val) => {
             if (!readOnly) setCode(val || '');
           }}
+          beforeMount={handleEditorWillMount}
           onMount={handleEditorMount}
           theme="vs-dark"
           options={{
