@@ -689,7 +689,7 @@ body {
   .editor-pane { border-right: none; border-bottom: 1px solid var(--border); min-height: 250px; }
   .output-pane { width: 100% !important; min-width: 0; max-width: none !important; }
   .resize-handle { display: none; }
-  .history-panel { display: none; }
+  .history-panel { display: flex; width: 100%; max-width: none; border-left: none; }
   .toolbar { flex-wrap: wrap; height: auto; padding: 6px 8px; gap: 4px; }
   .toolbar-left, .toolbar-right { flex-wrap: wrap; }
   .toolbar-icon-btn { width: 24px; height: 24px; }
@@ -802,7 +802,7 @@ body {
   .font-size-ctrl { display: none; }
   .statusbar { display: none; }
   .resize-handle { display: none; }
-  .history-panel { display: none; }
+  .history-panel { display: flex; width: 100%; max-width: none; border-left: none; }
   .chat-fab { display: none !important; }
 
   .main-split { flex-direction: column; flex: 1; overflow: hidden; }

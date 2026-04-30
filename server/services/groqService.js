@@ -1,6 +1,6 @@
 const Groq = require('groq-sdk');
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'missing_key' });
 const MODEL = 'llama-3.3-70b-versatile';
 
 async function chatCompletion(systemPrompt, userPrompt) {
