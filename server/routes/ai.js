@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const NodeCache = require('node-cache');
 const {
   explainError,
   fixCodeAI,
@@ -8,59 +9,62 @@ const {
   visualizeAI,
 } = require('../services/groqService');
 
-// Error explanation
-router.post('/explain-error', async (req, res, next) => {
+// Initialize cache with 1 hour TTL to reduce redundant LLM calls
+const aiCache = new NodeCache({ stdTTL: 3600 });
+
+// Helper middleware to handle cached AI requests
+const handleCachedRequest = (actionFn) => async (req, res, next) => {
   try {
-    const { code, error, language } = req.body;
-    const result = await explainError(code, error, language);
+    // Create a unique cache key based on route path and request body
+    const cacheKey = `${req.path}_${JSON.stringify(req.body)}`;
+    
+    // Check if we have a cached response
+    const cachedResponse = aiCache.get(cacheKey);
+    if (cachedResponse) {
+      console.log(`[Cache Hit] Serving cached AI response for ${req.path}`);
+      return res.json(cachedResponse);
+    }
+    
+    // Process request if not cached
+    const result = await actionFn(req.body);
+    
+    // Cache the successful result
+    aiCache.set(cacheKey, result);
+    
     res.json(result);
   } catch (err) {
     next(err);
   }
-});
+};
+
+// Error explanation
+router.post('/explain-error', handleCachedRequest(async (body) => {
+  const { code, error, language } = body;
+  return await explainError(code, error, language);
+}));
 
 // Code fix
-router.post('/fix-code', async (req, res, next) => {
-  try {
-    const { code, error, language } = req.body;
-    const result = await fixCodeAI(code, error, language);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/fix-code', handleCachedRequest(async (body) => {
+  const { code, error, language } = body;
+  return await fixCodeAI(code, error, language);
+}));
 
 // Logic explanation
-router.post('/explain-logic', async (req, res, next) => {
-  try {
-    const { code, language } = req.body;
-    const result = await explainLogicAI(code, language);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/explain-logic', handleCachedRequest(async (body) => {
+  const { code, language } = body;
+  return await explainLogicAI(code, language);
+}));
 
 // Test case generation
-router.post('/generate-tests', async (req, res, next) => {
-  try {
-    const { code, language } = req.body;
-    const result = await generateTestsAI(code, language);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/generate-tests', handleCachedRequest(async (body) => {
+  const { code, language } = body;
+  return await generateTestsAI(code, language);
+}));
 
 // Execution visualization
-router.post('/visualize', async (req, res, next) => {
-  try {
-    const { code, language, input } = req.body;
-    const result = await visualizeAI(code, language, input);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/visualize', handleCachedRequest(async (body) => {
+  const { code, language, input } = body;
+  return await visualizeAI(code, language, input);
+}));
 
 module.exports = router;
