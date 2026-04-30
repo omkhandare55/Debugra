@@ -241,6 +241,7 @@ export default function EditorPage({ user }) {
     if (isRunning) return;
     setIsRunning(true);
     setActiveOutputTab('stdout');
+    if (isMobile) setMobileTab('output'); // Auto-switch to output on mobile
     setExecStatus({ type: 'running', text: 'Running' });
     setStdout(''); setStderr(''); setExecTime(null);
 
@@ -267,7 +268,7 @@ export default function EditorPage({ user }) {
       setActiveOutputTab('stderr');
     }
     setIsRunning(false);
-  }, [code, language, isRunning, stdinValue]);
+  }, [code, language, isRunning, stdinValue, isMobile]);
 
   // AI actions
   const handleFix = useCallback(async () => {
@@ -856,7 +857,7 @@ export default function EditorPage({ user }) {
       {isMobile && mobileTab === 'saved' && user && (
         <div style={{ position:'fixed', inset:0, zIndex:50, background:'var(--bg-0)', display:'flex', flexDirection:'column' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid var(--border)', background:'var(--bg-1)' }}>
-            <span style={{ fontSize:'0.85rem', fontWeight:700, color:'var(--text-0)' }}>Saved Code</span>
+            <span style={{ fontSize:'0.85rem', fontWeight:700, color:'var(--text-0)' }}>Code History</span>
             <button onClick={() => setMobileTab('code')} style={{ background:'none', border:'none', color:'var(--text-1)', fontSize:'1.2rem', cursor:'pointer', padding:'4px 8px' }}>✕</button>
           </div>
           <div style={{ flex:1, overflow:'auto' }}>
@@ -881,9 +882,15 @@ export default function EditorPage({ user }) {
             {stderr && execStatus.type === 'error' && <span className="mobile-nav-dot" />}
           </button>
           {user && (
+            <button className="mobile-nav-btn" onClick={handleSave} disabled={isReadOnly}>
+              <i className="bi bi-cloud-arrow-up" />
+              <span>Save</span>
+            </button>
+          )}
+          {user && (
             <button className={`mobile-nav-btn ${mobileTab === 'saved' ? 'active' : ''}`} onClick={() => setMobileTab('saved')}>
               <i className="bi bi-clock-history" />
-              <span>Saved</span>
+              <span>History</span>
             </button>
           )}
           {roomId && (
