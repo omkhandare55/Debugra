@@ -5,7 +5,7 @@ A professional online code editor and social study room with real-time collabora
 ## Features
 
 - **VS Code-Like UI** — Professional, responsive design with an integrated status bar, scalable output panes, and keyboard shortcuts
-- **Code Execution** — Run 18+ programming languages (Python, Java, C++, JavaScript, Go, Rust, C# Mono, and more) permanently free powered by the Piston API
+- **Code Execution** — Run 18+ programming languages (Python, Java, C++, JavaScript, Go, Rust, C# Mono, and more) permanently free powered by the Wandbox API
 - **Monaco Editor** — High-performance editing experience with syntax highlighting, autocomplete, bracket matching, and code formatting
 - **AI Time-Travel Debugger** — Visual, step-by-step memory and algorithm visualization, error explanations, one-click fixes, and test case generation (powered by Groq's fast Llama 3.3 70B model)
 - **Real-Time Collaboration** — Create rooms, share a room ID, and code together with live sync of code and input streams via Firebase
@@ -20,7 +20,7 @@ A professional online code editor and social study room with real-time collabora
 | Frontend | React 18, Vite, Monaco Editor |
 | Styling | Vanilla CSS (Dark theme, VS Code aesthetics) |
 | Auth & Database | Firebase Auth, Cloud Firestore |
-| Code Execution | Piston API (100% Free Serverless execution) |
+| Code Execution | Wandbox API (100% Free Serverless execution) |
 | AI Features | Groq SDK (llama-3.3-70b-versatile) + node-cache |
 | Backend | Express.js (Node.js) with Rate Limiting & Helmet |
 
@@ -46,7 +46,7 @@ debugra/
 │   │   ├── execute.js      # Code execution endpoint
 │   │   └── ai.js           # AI features endpoint
 │   ├── services/
-│   │   └── judge0Service.js # Piston API compiler wrapper
+│   │   └── judge0Service.js # Wandbox API compiler wrapper
 │   ├── middleware/
 │   │   └── errorHandler.js
 │   └── server.js
